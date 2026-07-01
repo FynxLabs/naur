@@ -23,7 +23,7 @@ jobs:
       - name: Install Arch build tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y bsdtar zstd
+          sudo apt-get install -y libarchive-tools zstd
 
       - uses: actions/setup-go@v5
         with:
@@ -40,11 +40,9 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ~/.local/bin/mise run fetch -- --force
 
-      - name: Build AUR packages
+      - name: Build AUR packages (nody-greeter, shikai-theme)
         run: |
-          # makepkg needs a non-root user; the runner's default user works
-          sudo apt-get install -y base-devel git
-          ~/.local/bin/mise run fetch-aur -- --force
+          docker run --rm -v "$PWD/x86_64:/out" -v "$PWD/mise/tasks:/tasks" archlinux:latest bash /tasks/fetch-aur-docker
 
       - name: Mirror xlibre
         run: ~/.local/bin/mise run mirror-xlibre

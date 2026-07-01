@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# Runs INSIDE an archlinux:latest container (CI path). Builds the AUR
+# greeter packages and copies them to the mounted /out directory.
+# The host's mise task fetch-aur is the local-dev equivalent.
+
+set -euo pipefail
+
+OUT_DIR="/out"
+mkdir -p "${OUT_DIR}"
+
+# Install build deps
+pacman -Syu --noconfirm --needed base-devel git
+
+# Create a non-root builder (makepkg refuses root)
+useradd -m -G wheel builder
+echo 'builder ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
+
+# Build order matters: shikai-theme installs into nody-greeter's theme dir.
+PKGS=("nody-greeter" "shikai-theme")
+BUILD_DIR="/tmp/aur-build"
+mkdir -p "${BUILD_DIR}"
+chown builder:builder "${BUILD_DIR}"
+
+for pkg in "${PKGS[@]}"; do
+    echo "==> Building ${pkg} from the AUR..."
+    sudo -u builder git clone --depth 1 "https://aur.archlinux.org/${pkg}.git" "${BUILD_DIR}/${pkg}"
+    sudo -u builder bash -c "cd '${BUILD_DIR}/${pkg}' && makepkg -s --needed --noconfirm"
+
+    rm -f "${OUT_DIR}/${pkg}-"*.pkg.tar.zst
+    cp "${BUILD_DIR}/${pkg}/"*.pkg.tar.zst "${OUT_DIR}/"
+
+    # Install so the next package can depend against it.
+    pacman -U --noconfirm --needed "${BUILD_DIR}/${pkg}/"*.pkg.tar.zst || true
+done
+
+echo "==> AUR packages built into ${OUT_DIR}"

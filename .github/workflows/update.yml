@@ -1,0 +1,59 @@
+name: Update Repo
+
+on:
+  schedule:
+    # Daily at 06:00 UTC — catches new dusk/umbra/ember/rwr releases
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+    # Manual trigger via GitHub Actions UI
+  repository_dispatch:
+    # Triggered by dusk/umbra/ember/rwr release workflows
+    types: [release]
+
+permissions:
+  contents: write
+  pages: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Arch build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bsdtar zstd
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Install mise
+        run: curl https://mise.run | sh
+
+      - name: Install tools
+        run: ~/.local/bin/mise install
+
+      - name: Fetch FynxLabs release packages
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ~/.local/bin/mise run fetch -- --force
+
+      - name: Build AUR packages
+        run: |
+          # makepkg needs a non-root user; the runner's default user works
+          sudo apt-get install -y base-devel git
+          ~/.local/bin/mise run fetch-aur -- --force
+
+      - name: Mirror xlibre
+        run: ~/.local/bin/mise run mirror-xlibre
+
+      - name: Build repo database
+        run: ~/.local/bin/mise run build
+
+      - name: Publish to gh-pages
+        run: |
+          git config --global user.name "FynxLabs Bot"
+          git config --global user.email "bot@fynxlabs.dev"
+          ~/.local/bin/mise run publish

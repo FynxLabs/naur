@@ -1,0 +1,36 @@
+[settings]
+experimental = true
+task_output = "interleave"
+
+[tools]
+shfmt = "latest"
+shellcheck = "latest"
+
+# ── Standard task verbs ────────────────────────────────────────────────────
+
+[tasks.start]
+description = "Fetch + build + publish in one shot (alias for update)"
+depends = ["update"]
+
+[tasks.update]
+description = "Full pipeline: fetch all packages, rebuild db, publish to gh-pages"
+depends = ["fetch", "build", "publish"]
+
+[tasks.lint]
+description = "Run shellcheck on all task scripts"
+run = "shellcheck mise/tasks/*"
+
+[tasks.format]
+description = "Format all task scripts with shfmt (in-place)"
+run = "shfmt -w -i 4 -ci mise/tasks/*"
+
+[tasks.fmt]
+depends = ["format"]
+
+[tasks.security]
+description = "Not applicable — package mirror, no application code"
+run = "echo 'repo: no security scanner configured (package mirror)'"
+
+[tasks.ci]
+description = "Run the full CI check locally (lint + build, no publish)"
+depends = ["lint", "fetch", "build"]

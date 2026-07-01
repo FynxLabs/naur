@@ -1,0 +1,114 @@
+#!/usr/bin/env bash
+#MISE description="Download FynxLabs release packages (dusk, umbra, ember, rwr) into x86_64/"
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_DIR="${SCRIPT_DIR}/../../x86_64"
+mkdir -p "${REPO_DIR}"
+
+FORCE="${1:-}"
+
+# ── Helper: download a GitHub release package ──────────────────────────────
+# Handles the nfpm→Arch pkgver dash problem (same as tenebrux's update-dusk).
+download_release() {
+    local repo="$1"
+    local pattern="$2"
+    local pkgname="$3"
+
+    echo "==> ${pkgname}: fetching from ${repo}..."
+
+    # Find the latest stable release (v* tag, not prerelease)
+    local tag
+    tag=$(gh release list --repo "${repo}" --limit 20 --json tagName,isPrerelease \
+        --jq '[.[] | select(.tagName | startswith("v")) | select(.isPrerelease == false)] | .[0].tagName // empty')
+
+    if [ -z "${tag}" ]; then
+        echo "    No stable release, trying latest prerelease..."
+        tag=$(gh release list --repo "${repo}" --limit 20 --json tagName \
+            --jq '[.[] | select(.tagName | startswith("v"))] | .[0].tagName // empty')
+    fi
+
+    if [ -z "${tag}" ]; then
+        echo "    No versioned release, trying edge..."
+        tag=$(gh release list --repo "${repo}" --limit 20 --json tagName \
+            --jq '[.[] | select(.tagName | startswith("edge-"))] | .[0].tagName // empty')
+    fi
+
+    if [ -z "${tag}" ]; then
+        echo "ERROR: No release found for ${repo}"
+        return 1
+    fi
+
+    echo "    Using release: ${tag}"
+
+    # Skip if already present (unless --force)
+    if [ -z "${FORCE}" ] && compgen -G "${REPO_DIR}/${pkgname}-*.pkg.tar.zst" >/dev/null 2>&1; then
+        echo "    Already present, skipping (use --force to re-download)"
+        return 0
+    fi
+
+    # Download to a temp dir, then fix pkgver if needed
+    local tmpdir
+    tmpdir=$(mktemp -d)
+    trap "rm -rf ${tmpdir}" RETURN
+
+    if ! gh release download "${tag}" --repo "${repo}" --pattern "${pattern}" --dir "${tmpdir}"; then
+        echo "ERROR: Failed to download ${pkgname} from ${tag}"
+        return 1
+    fi
+
+    local downloaded
+    downloaded=$(ls "${tmpdir}"/*.pkg.tar.zst 2>/dev/null | head -1)
+    if [ -z "${downloaded}" ]; then
+        echo "ERROR: No .pkg.tar.zst found after download"
+        return 1
+    fi
+
+    # Fix nfpm-style pkgver (dashes break pacman DB parsing)
+    local pkgver
+    pkgver=$(tar --zstd -xOf "${downloaded}" .PKGINFO 2>/dev/null | awk -F' = ' '/^pkgver/{print $2}')
+    if [ -z "${pkgver}" ]; then
+        echo "ERROR: Failed to read pkgver from ${downloaded}"
+        return 1
+    fi
+
+    # Only fix if pkgver contains a dash (nfpm edge-xxx-1 style)
+    if [[ "${pkgver}" == *-* ]]; then
+        local pkgrel="${pkgver##*-}"
+        local pkgver_only="${pkgver%-*}"
+        local pkgver_clean="${pkgver_only//-/.}"
+        local pkgver_full="${pkgver_clean}-${pkgrel}"
+
+        echo "    Rewriting pkgver: ${pkgver} -> ${pkgver_full}"
+
+        local workdir="${tmpdir}/fix"
+        mkdir -p "${workdir}"
+        bsdtar -xf "${downloaded}" -C "${workdir}"
+        sed -i "s|^pkgver = .*|pkgver = ${pkgver_full}|" "${workdir}/.PKGINFO"
+
+        local out="${REPO_DIR}/${pkgname}-${pkgver_full}-x86_64.pkg.tar.zst"
+        rm -f "${REPO_DIR}/${pkgname}-"*.pkg.tar.zst
+
+        local payload=()
+        for entry in "${workdir}"/*; do
+            [ -e "$entry" ] || continue
+            payload+=("$(basename "$entry")")
+        done
+        (cd "${workdir}" && bsdtar --zstd -cf "${out}" .PKGINFO .MTREE "${payload[@]}")
+    else
+        # pkgver is clean — just copy
+        rm -f "${REPO_DIR}/${pkgname}-"*.pkg.tar.zst
+        cp "${downloaded}" "${REPO_DIR}/"
+    fi
+
+    echo "    Stored: $(ls "${REPO_DIR}/${pkgname}-"*.pkg.tar.zst | head -1 | xargs basename)"
+}
+
+# ── Download FynxLabs packages ──────────────────────────────────────────────
+download_release "fynxlabs/dusk"  "dusk_*_linux_amd64.pkg.tar.zst"  "dusk"
+download_release "fynxlabs/umbra" "umbra_*_linux_amd64.pkg.tar.zst" "umbra"
+download_release "fynxlabs/ember" "ember_*_linux_amd64.pkg.tar.zst" "ember"
+download_release "fynxlabs/rwr"   "rwr_*_linux_amd64.pkg.tar.zst"   "rwr"
+
+echo "==> FynxLabs packages fetched."

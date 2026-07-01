@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+#MISE description="Mirror xlibre packages from x11libre.net into x86_64/"
+# Mirrors the X server so Tenebrux installs/updates don't fail if
+# x11libre.net is down. The mirror is a snapshot — re-run periodically.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_DIR="${SCRIPT_DIR}/../../x86_64"
+mkdir -p "${REPO_DIR}"
+
+SOURCE="https://xlibre.net/repo/arch_based/x86_64/"
+
+echo "==> Mirroring xlibre packages from ${SOURCE}..."
+
+# Download the remote package list and fetch all .pkg.tar.zst files.
+# Using curl + grep rather than rsync because the source is an HTTP pacman repo.
+PKG_LIST=$(curl -fsSL "${SOURCE}" | grep -oP 'href="\K[^"]*\.pkg\.tar\.zst' || true)
+
+if [ -z "${PKG_LIST}" ]; then
+    echo "    WARNING: No packages found at ${SOURCE} (server may be down)"
+    echo "    Keeping existing mirror."
+    exit 0
+fi
+
+COUNT=0
+for pkg in ${PKG_LIST}; do
+    # xlibre packages use a flat namespace (xlibre-xserver, xlibre-video-amdgpu, etc.)
+    # Remove any existing version of the same package base before downloading.
+    pkgbase="${pkg%%-*}"
+    if [ "${pkgbase}" = "xlibre" ]; then
+        # Keep only the latest version of each xlibre-* package
+        rm -f "${REPO_DIR}/xlibre-"*".pkg.tar.zst" 2>/dev/null || true
+    fi
+
+    echo "    Fetching: ${pkg}"
+    curl -fsSL -o "${REPO_DIR}/${pkg}" "${SOURCE}${pkg}"
+    COUNT=$((COUNT + 1))
+done
+
+echo "==> Mirrored ${COUNT} xlibre packages."

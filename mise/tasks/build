@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+#MISE description="Run fetch + fetch-aur + mirror-xlibre, then rebuild repo database"
+#MISE depends=["fetch", "fetch-aur", "mirror-xlibre"]
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_DIR="$(realpath "${SCRIPT_DIR}/../../x86_64")"
+
+echo "==> Rebuilding repo database..."
+
+cd "${REPO_DIR}"
+
+# Remove old db files so repo-add starts fresh
+rm -f fynxlabs.{db,files}{,.tar.gz,.tar.gz.old}
+
+# repo-add scans all .pkg.tar.zst and generates fynxlabs.db.tar.gz + fynxlabs.files.tar.gz
+# The symlink names (fynxlabs.db, fynxlabs.files) are what pacman looks for.
+repo-add "fynxlabs.db.tar.gz" *.pkg.tar.zst
+
+echo "==> Repo database rebuilt."
+echo "    $(ls *.pkg.tar.zst | wc -l) packages in ${REPO_DIR}"

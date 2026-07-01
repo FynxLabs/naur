@@ -12,11 +12,11 @@ echo "==> Rebuilding repo database..."
 cd "${REPO_DIR}"
 
 # Remove old db files so repo-add starts fresh
-rm -f fynxlabs.{db,files}{,.tar.gz,.tar.gz.old}
+rm -f naur.{db,files}{,.tar.gz,.tar.gz.old}
 
-# repo-add scans all .pkg.tar.zst and generates fynxlabs.db.tar.gz + fynxlabs.files.tar.gz
-# The symlink names (fynxlabs.db, fynxlabs.files) are what pacman looks for.
-repo-add "fynxlabs.db.tar.gz" *.pkg.tar.zst
+# repo-add scans all .pkg.tar.zst and generates naur.db.tar.gz + naur.files.tar.gz
+# The symlink names (naur.db, naur.files) are what pacman looks for.
+repo-add "naur.db.tar.gz" *.pkg.tar.zst
 
 echo "==> Repo database rebuilt."
 echo "    $(ls *.pkg.tar.zst | wc -l) packages in ${REPO_DIR}"

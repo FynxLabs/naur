@@ -7,7 +7,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="${SCRIPT_DIR}/../.."
 PKG_DIR="$(realpath "${ROOT}/x86_64")"
 
-if [ ! -f "${PKG_DIR}/tenebaur.db" ]; then
+if [ ! -f "${PKG_DIR}/naur.db" ]; then
     echo "ERROR: No repo database found. Run 'mise build' first."
     exit 1
 fi
@@ -42,4 +42,4 @@ git -c user.name="FynxLabs Bot" \
 $(ls x86_64/*.pkg.tar.zst | wc -l) packages"
 
 git push origin gh-pages
-echo "==> Published. Live at https://fynxlabs.github.io/repo/"
+echo "==> Published. Live at https://fynxlabs.github.io/naur/"

@@ -1,4 +1,6 @@
-# tenebaur
+# naur
+
+> naur, not the aur.
 
 Pacman repository for FynxLabs/Tenebrux packages, hosted on GitHub Pages.
 Serves pre-built packages so installs and updates never depend on the AUR at
@@ -9,9 +11,9 @@ install time or a single third-party server.
 Add to `/etc/pacman.conf`:
 
 ```ini
-[tenebaur]
+[naur]
 SigLevel = Optional TrustAll
-Server = https://fynxlabs.github.io/aur/$arch/
+Server = https://fynxlabs.github.io/naur/$arch/
 ```
 
 Then:

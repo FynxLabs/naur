@@ -40,6 +40,8 @@ jobs:
           '
 
       - name: Publish to gh-pages
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config --global user.name "FynxLabs Bot"
           git config --global user.email "bot@fynxlabs.dev"

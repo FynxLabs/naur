@@ -15,7 +15,15 @@ fi
 echo "==> Publishing to gh-pages..."
 
 cd "${ROOT}"
-REMOTE_URL=$(git remote get-url origin)
+
+# In CI, git remote is read-only (no credentials). Inject the GITHUB_TOKEN
+# so the orphan-branch push can authenticate. Locally (no GITHUB_TOKEN set),
+# fall back to the existing remote (which has ssh or personal token creds).
+if [ -n "${GITHUB_TOKEN:-}" ]; then
+    REMOTE_URL="https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY:-FynxLabs/naur}.git"
+else
+    REMOTE_URL=$(git remote get-url origin)
+fi
 
 # Fresh clone into a temp dir so the working tree stays clean.
 TMP_CLONE="$(mktemp -d)"

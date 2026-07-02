@@ -106,9 +106,9 @@ download_release() {
 }
 
 # ── Download FynxLabs packages ──────────────────────────────────────────────
-download_release "fynxlabs/dusk"  "dusk_*_linux_amd64.pkg.tar.zst"  "dusk"
-download_release "fynxlabs/umbra" "umbra_*_linux_amd64.pkg.tar.zst" "umbra"
-download_release "fynxlabs/ember" "ember_*_linux_amd64.pkg.tar.zst" "ember"
-download_release "fynxlabs/rwr"   "rwr_*_linux_amd64.pkg.tar.zst"   "rwr"
+download_release "FynxLabs/dusk"  "dusk_*_linux_amd64.pkg.tar.zst"  "dusk"
+download_release "FynxLabs/umbra" "umbra_*_linux_amd64.pkg.tar.zst" "umbra"
+download_release "FynxLabs/ember" "ember_*_linux_amd64.pkg.tar.zst" "ember"
+download_release "FynxLabs/rwr"   "rwr_*_linux_amd64.pkg.tar.zst"   "rwr"
 
 echo "==> FynxLabs packages fetched."

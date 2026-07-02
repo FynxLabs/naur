@@ -47,8 +47,14 @@ jobs:
       - name: Mirror xlibre
         run: ~/.local/bin/mise run mirror-xlibre
 
-      - name: Build repo database
-        run: ~/.local/bin/mise run build
+      - name: Build repo database (repo-add)
+        run: |
+          docker run --rm -v "$PWD/x86_64:/out" archlinux:latest bash -c '
+            cd /out
+            rm -f naur.{db,files}{,.tar.gz,.tar.gz.old}
+            repo-add "naur.db.tar.gz" *.pkg.tar.zst
+            echo "==> $(ls *.pkg.tar.zst | wc -l) packages in repo"
+          '
 
       - name: Publish to gh-pages
         run: |

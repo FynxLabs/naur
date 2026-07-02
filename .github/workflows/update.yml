@@ -27,9 +27,6 @@ jobs:
         run: |
           docker run --rm -v "$PWD/x86_64:/out" -v "$PWD/mise/tasks:/tasks" archlinux:latest bash /tasks/fetch-aur-docker
 
-      - name: Mirror xlibre
-        run: ./mise/tasks/mirror-xlibre
-
       - name: Build repo database (repo-add)
         run: |
           docker run --rm -v "$PWD/x86_64:/out" archlinux:latest bash -c '

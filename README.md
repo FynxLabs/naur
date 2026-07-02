@@ -27,13 +27,16 @@ sudo pacman -S dusk umbra ember rwr nody-greeter shikai-theme
 
 | Package | Source | Why it's here |
 |---------|--------|---------------|
-| `dusk` | github.com/fynxlabs/dusk releases | Panel — no AUR package |
-| `umbra` | github.com/fynxlabs/umbra releases | Installer — no AUR package |
-| `ember` | github.com/fynxlabs/ember releases | Clipboard/notifications — no AUR package |
-| `rwr` | github.com/fynxlabs/rwr releases | Config management — no AUR package |
+| `dusk` | github.com/FynxLabs/dusk releases | Panel — no AUR package |
+| `umbra` | github.com/FynxLabs/umbra releases | Installer — no AUR package |
+| `ember` | github.com/FynxLabs/ember releases | Clipboard/notifications — no AUR package |
+| `rwr` | github.com/FynxLabs/rwr releases | Config management — no AUR package |
 | `nody-greeter` | AUR (rebuilt) | LightDM greeter — pre-built so installs don't need yay/AUR at install time |
 | `shikai-theme` | AUR (rebuilt) | Greeter theme — same reason |
-| `xlibre-*` | x11libre.net (mirrored) | X server — mirrored so x11libre.net being down doesn't break Tenebrux |
+
+> **xlibre** packages are NOT mirrored here — they live in their own repo at
+> `x11libre.net/repo/arch_based/`. Tenebrux's pacman.conf points directly at
+> `[xlibre]` for X server packages.
 
 ## Updating the repo
 
@@ -41,7 +44,6 @@ sudo pacman -S dusk umbra ember rwr nody-greeter shikai-theme
 mise install          # install tools
 mise run fetch        # download FynxLabs release packages
 mise run fetch-aur    # build AUR packages (nody-greeter, shikai-theme)
-mise run mirror-xlibre # mirror xlibre X server packages
 mise run build        # regenerate repo database (repo-add)
 mise run publish      # push to gh-pages branch (live site updates)
 # Or all at once:

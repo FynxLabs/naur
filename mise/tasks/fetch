@@ -9,8 +9,27 @@ mkdir -p "${REPO_DIR}"
 
 FORCE="${1:-}"
 
-# ── Helper: download a GitHub release package ──────────────────────────────
-# Handles the nfpm→Arch pkgver dash problem (same as tenebrux's update-dusk).
+# ── Helper: find the latest release asset via the public REST API ───────────
+# Uses curl + jq (no gh CLI, no GITHUB_TOKEN needed for public repos).
+# Returns the browser_download_url of the asset matching the glob pattern.
+find_asset_url() {
+    local repo="$1" pattern="$2"
+
+    # Try latest stable release first, then fall back to all releases.
+    # The API endpoint /releases/latest only returns non-prerelease tags.
+    local releases_json
+    releases_json=$(curl -fsSL "https://api.github.com/repos/${repo}/releases?per_page=10" 2>/dev/null || \
+                    curl -fsSL "https://api.github.com/repos/${repo}/releases" 2>/dev/null || \
+                    echo '[]')
+
+    # Find the first release with an asset matching the pattern.
+    # Pattern uses shell glob syntax (* matches anything).
+    echo "${releases_json}" | jq -r --arg pat "${pattern}" '
+        .[].assets[] | select(.name | test($pat | gsub("[*]"; ".*") | "^" + . + "$")) | .browser_download_url
+    ' | head -1
+}
+
+# ── Helper: download and fix pkgver ─────────────────────────────────────────
 download_release() {
     local repo="$1"
     local pattern="$2"
@@ -18,50 +37,33 @@ download_release() {
 
     echo "==> ${pkgname}: fetching from ${repo}..."
 
-    # Find the latest stable release (v* tag, not prerelease)
-    local tag
-    tag=$(gh release list --repo "${repo}" --limit 20 --json tagName,isPrerelease \
-        --jq '[.[] | select(.tagName | startswith("v")) | select(.isPrerelease == false)] | .[0].tagName // empty')
-
-    if [ -z "${tag}" ]; then
-        echo "    No stable release, trying latest prerelease..."
-        tag=$(gh release list --repo "${repo}" --limit 20 --json tagName \
-            --jq '[.[] | select(.tagName | startswith("v"))] | .[0].tagName // empty')
-    fi
-
-    if [ -z "${tag}" ]; then
-        echo "    No versioned release, trying edge..."
-        tag=$(gh release list --repo "${repo}" --limit 20 --json tagName \
-            --jq '[.[] | select(.tagName | startswith("edge-"))] | .[0].tagName // empty')
-    fi
-
-    if [ -z "${tag}" ]; then
-        echo "ERROR: No release found for ${repo}"
-        return 1
-    fi
-
-    echo "    Using release: ${tag}"
-
     # Skip if already present (unless --force)
     if [ -z "${FORCE}" ] && compgen -G "${REPO_DIR}/${pkgname}-*.pkg.tar.zst" >/dev/null 2>&1; then
         echo "    Already present, skipping (use --force to re-download)"
         return 0
     fi
 
-    # Download to a temp dir, then fix pkgver if needed
+    local asset_url
+    asset_url=$(find_asset_url "${repo}" "${pattern}")
+    if [ -z "${asset_url}" ]; then
+        echo "    WARNING: No release asset matching '${pattern}' found in ${repo}"
+        echo "    (the package may not have a release yet — skipping)"
+        return 0
+    fi
+
+    echo "    Downloading: ${asset_url}"
+
     local tmpdir
     tmpdir=$(mktemp -d)
     trap "rm -rf ${tmpdir}" RETURN
 
-    if ! gh release download "${tag}" --repo "${repo}" --pattern "${pattern}" --dir "${tmpdir}"; then
-        echo "ERROR: Failed to download ${pkgname} from ${tag}"
-        return 1
-    fi
+    local filename
+    filename=$(basename "${asset_url}")
+    curl -fsSL -o "${tmpdir}/${filename}" "${asset_url}"
 
-    local downloaded
-    downloaded=$(ls "${tmpdir}"/*.pkg.tar.zst 2>/dev/null | head -1)
-    if [ -z "${downloaded}" ]; then
-        echo "ERROR: No .pkg.tar.zst found after download"
+    local downloaded="${tmpdir}/${filename}"
+    if [ ! -f "${downloaded}" ]; then
+        echo "ERROR: Download failed for ${pkgname}"
         return 1
     fi
 
@@ -97,7 +99,6 @@ download_release() {
         done
         (cd "${workdir}" && bsdtar --zstd -cf "${out}" .PKGINFO .MTREE "${payload[@]}")
     else
-        # pkgver is clean — just copy
         rm -f "${REPO_DIR}/${pkgname}-"*.pkg.tar.zst
         cp "${downloaded}" "${REPO_DIR}/"
     fi

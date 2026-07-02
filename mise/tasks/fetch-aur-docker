@@ -24,10 +24,28 @@ chown builder:builder "${BUILD_DIR}"
 for pkg in "${PKGS[@]}"; do
     echo "==> Building ${pkg} from the AUR..."
     sudo -u builder git clone --depth 1 "https://aur.archlinux.org/${pkg}.git" "${BUILD_DIR}/${pkg}"
-    sudo -u builder bash -c "cd '${BUILD_DIR}/${pkg}' && makepkg -s --needed --noconfirm"
+    # Strip debug packages — they bloat the repo past GitHub's 100MB limit
+    # and serve no purpose in a binary package mirror.
+    sudo -u builder bash -c "cd '${BUILD_DIR}/${pkg}' && makepkg -s --needed --noconfirm --noconfirm"
 
     rm -f "${OUT_DIR}/${pkg}-"*.pkg.tar.zst
-    cp "${BUILD_DIR}/${pkg}/"*.pkg.tar.zst "${OUT_DIR}/"
+    # Copy only non-debug packages under 50MB (GitHub's recommended max).
+    # Larger packages (nody-greeter is 100MB+ with bundled node) can't go
+    # through git — they get built into the Tenebrux ISO's local repo instead.
+    for f in "${BUILD_DIR}/${pkg}/"*.pkg.tar.zst; do
+        base="$(basename "$f")"
+        if [[ "$base" == *-debug-* ]]; then
+            echo "    Skipping debug package: $base"
+            continue
+        fi
+        size_mb=$(du -m "$f" | cut -f1)
+        if [ "$size_mb" -gt 50 ]; then
+            echo "    WARNING: $base is ${size_mb}MB — exceeds 50MB limit, skipping"
+            echo "    (large packages get built into the Tenebrux ISO local repo, not naur)"
+            continue
+        fi
+        cp "$f" "${OUT_DIR}/"
+    done
 
     # Install so the next package can depend against it.
     pacman -U --noconfirm --needed "${BUILD_DIR}/${pkg}/"*.pkg.tar.zst || true

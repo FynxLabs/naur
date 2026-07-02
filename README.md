@@ -31,12 +31,14 @@ sudo pacman -S dusk umbra ember rwr nody-greeter shikai-theme
 | `umbra` | github.com/FynxLabs/umbra releases | Installer — no AUR package |
 | `ember` | github.com/FynxLabs/ember releases | Clipboard/notifications — no AUR package |
 | `rwr` | github.com/FynxLabs/rwr releases | Config management — no AUR package |
-| `nody-greeter` | AUR (rebuilt) | LightDM greeter — pre-built so installs don't need yay/AUR at install time |
-| `shikai-theme` | AUR (rebuilt) | Greeter theme — same reason |
+| `shikai-theme` | AUR (rebuilt) | Greeter theme — pre-built so installs don't need yay/AUR at install time |
 
 > **xlibre** packages are NOT mirrored here — they live in their own repo at
 > `x11libre.net/repo/arch_based/`. Tenebrux's pacman.conf points directly at
 > `[xlibre]` for X server packages.
+>
+> **nody-greeter** is too large (100MB+) for git/GitHub Pages. It gets built
+> into the Tenebrux ISO's local `[tenebrux-aur]` repo at ISO build time instead.
 
 ## Updating the repo
 

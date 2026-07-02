@@ -14,18 +14,23 @@ fi
 
 echo "==> Publishing to gh-pages..."
 
-# Use a temp clone so we never touch the working tree's git state
+cd "${ROOT}"
+REMOTE_URL=$(git remote get-url origin)
+
+# Fresh clone into a temp dir so the working tree stays clean.
 TMP_CLONE="$(mktemp -d)"
 trap 'rm -rf "${TMP_CLONE}"' EXIT
 
-cd "${ROOT}"
-git clone --branch gh-pages --depth 1 . "${TMP_CLONE}" 2>/dev/null || {
-    # gh-pages branch doesn't exist yet — create it
-    echo "    gh-pages branch not found, creating..."
+# Try to clone gh-pages; if it doesn't exist, init a fresh orphan branch.
+if git clone --branch gh-pages --depth 1 "${REMOTE_URL}" "${TMP_CLONE}" 2>/dev/null; then
+    echo "    Cloned existing gh-pages branch"
+else
+    echo "    gh-pages branch not found, creating orphan branch..."
     cd "${TMP_CLONE}"
+    git init
+    git remote add origin "${REMOTE_URL}"
     git checkout --orphan gh-pages
-    git rm -rf . 2>/dev/null || true
-}
+fi
 
 cd "${TMP_CLONE}"
 

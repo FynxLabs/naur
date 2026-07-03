@@ -13,7 +13,7 @@ Add to `/etc/pacman.conf`:
 ```ini
 [naur]
 SigLevel = Optional TrustAll
-Server = https://fynxlabs.github.io/naur/$arch/
+Server = https://pkgs.tenebrux.com/$arch/
 ```
 
 Then:
